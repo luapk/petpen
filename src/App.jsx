@@ -1,8 +1,8 @@
 import { useState, useCallback } from "react";
 
-// ─────────────────────────────────────────────────────────────────────
+// ───────────────────────────────────────────────────────────────────
 // DESIGN TOKENS
-// ─────────────────────────────────────────────────────────────────────
+// ───────────────────────────────────────────────────────────────────
 const BG = "linear-gradient(150deg, #5a90cc 0%, #8264c0 45%, #a070cc 100%)";
 const GLASS = "rgba(255,255,255,0.18)";
 const GLASS_CARD = "rgba(255,255,255,0.15)";
@@ -19,9 +19,9 @@ const SHADOW = "0 8px 32px rgba(60,40,120,0.2)";
 const SHADOW_SM = "0 4px 16px rgba(60,40,120,0.15)";
 const TS = "0 1px 3px rgba(40,20,80,0.35)"; // text shadow for legibility
 
-// ─────────────────────────────────────────────────────────────────────
+// ───────────────────────────────────────────────────────────────────
 // SYSTEM PROMPTS — ADVERTISING (full copywriting skill embedded)
-// ─────────────────────────────────────────────────────────────────────
+// ───────────────────────────────────────────────────────────────────
 const AD_SYSTEM = `You are an expert advertising copywriter working to D&AD Yellow Pencil and Cannes Gold Lion standard, operating with the full rigor of a senior copywriter at adam&eveTBWA.
 
 PHILOSOPHY
@@ -82,9 +82,9 @@ SELF-CRITIQUE PASS — run every route through these before presenting:
 OUTPUT — return this exact JSON only. No preamble, no markdown, no explanation:
 {"mode":"advertising","claims":[{"route_label":"The [strategic angle name] — 3-5 words describing the thought","core_claim":"The headline. Ideally 6 words or less. No em dashes. This leads everything.","supporting_line":"One sentence. Goes somewhere the headline does not — never restates it.","attribution":"IAMS [specific relevant product]","rationale":"Names the strategic MOVE and why it works for this brief. Does NOT paraphrase the headline. Explains the technique."}]}`
 
-// ─────────────────────────────────────────────────────────────────────
+// ───────────────────────────────────────────────────────────────────
 // SYSTEM PROMPTS — PACK CLAIMS
-// ─────────────────────────────────────────────────────────────────────
+// ───────────────────────────────────────────────────────────────────
 const PACK_SYSTEM = `You are an expert in translating scientific research into hard-hitting, legally defensible product claims for pet food packaging, roundels, shelf and CRM. You work for adam&eveTBWA on IAMS.
 
 BRAND ARCHITECTURE
@@ -123,9 +123,9 @@ ANTI-PATTERNS TO AVOID:
 OUTPUT — return this exact JSON only. No preamble, no markdown, no explanation:
 {"mode":"pack","claims":[{"route_label":"The [approach name]","core_claim":"Short. Specific. 6-8 words max. THIS LEADS. No em dashes.","attribution":"IAMS [relevant product]","source_note":"Small print attribution (e.g. 'Based on Waltham Petcare Science Institute research')","legal_nervousness":{"score":3,"label":"😬 The Concerned Email","explanation":"Why specifically — what element makes legal nervous, and what would fix it."},"rationale":"Which pack principle this uses and why this framing beats the alternatives."}]}`
 
-// ─────────────────────────────────────────────────────────────────────
+// ───────────────────────────────────────────────────────────────────
 // RIFF PROMPT
-// ─────────────────────────────────────────────────────────────────────
+// ───────────────────────────────────────────────────────────────────
 const RIFF_SYSTEM = `You are a D&AD-standard advertising copywriter. A creative director likes a claim but wants to explore variations before committing.
 
 Generate 3 riff variations on the provided claim. Each riff must:
@@ -138,9 +138,9 @@ Generate 3 riff variations on the provided claim. Each riff must:
 OUTPUT — return this exact JSON only. No preamble, no markdown:
 {"riffs":[{"core_claim":"...","supporting_line":"...","change_note":"What changed and the craft reason — one sentence max"}]}`
 
-// ─────────────────────────────────────────────────────────────────────
+// ───────────────────────────────────────────────────────────────────
 // DATA
-// ─────────────────────────────────────────────────────────────────────
+// ───────────────────────────────────────────────────────────────────
 const CATEGORIES = [
   "Gut Health","Coat & Skin","Weight Management","Longevity",
   "Energy & Vitality","Dental Health","Immune Support","Joint Health","Kidney Health"
@@ -152,9 +152,9 @@ const PRODUCT_MAP = {
   "Immune Support":"IAMS Immunity","Joint Health":"IAMS Joint Care","Kidney Health":"IAMS Kidney Care"
 };
 
-// ─────────────────────────────────────────────────────────────────────
+// ───────────────────────────────────────────────────────────────────
 // API HELPER
-// ─────────────────────────────────────────────────────────────────────
+// ───────────────────────────────────────────────────────────────────
 async function callClaude(system, userMsg) {
   const res = await fetch("/api/generate", {
     method: "POST",
@@ -169,12 +169,15 @@ async function callClaude(system, userMsg) {
   const data = await res.json();
   if (data.error) throw new Error(data.error.message);
   const text = data.content?.[0]?.text || "";
-  return JSON.parse(text.replace(/```json\n?|```/g, "").trim());
+  const cleaned = text.replace(/```json\n?|```/g, "").trim();
+  const match = cleaned.match(/\{[\s\S]*\}/);
+  if (!match) throw new Error("No JSON found in response");
+  return JSON.parse(match[0]);
 }
 
-// ─────────────────────────────────────────────────────────────────────
+// ───────────────────────────────────────────────────────────────────
 // GLASS HELPERS
-// ─────────────────────────────────────────────────────────────────────
+// ───────────────────────────────────────────────────────────────────
 const glassCard = (hover) => ({
   background: hover ? GLASS_CARD_HOVER : GLASS_CARD,
   backdropFilter: "blur(20px)",
@@ -185,9 +188,9 @@ const glassCard = (hover) => ({
   transition: "all 0.25s ease",
 });
 
-// ─────────────────────────────────────────────────────────────────────
+// ───────────────────────────────────────────────────────────────────
 // COMPONENTS
-// ─────────────────────────────────────────────────────────────────────
+// ───────────────────────────────────────────────────────────────────
 
 function RiffPanel({ riffs, loading }) {
   if (loading) return (
@@ -411,9 +414,9 @@ function SectionHeader({ label, count, onCopyAll, copied }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────
+// ───────────────────────────────────────────────────────────────────
 // APP
-// ─────────────────────────────────────────────────────────────────────
+// ───────────────────────────────────────────────────────────────────
 export default function App() {
   const [mode, setMode] = useState("advertising"); // advertising | pack | both
   const [categories, setCategories] = useState(["Gut Health"]);
