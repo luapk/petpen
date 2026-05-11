@@ -116,7 +116,8 @@ CATEGORY-APPROPRIATE TIMEFRAMES — match the biology:
 If the research gives a different timeframe, use it exactly. Never round up.
 
 FORMAT REQUIREMENTS:
-- Core claim: 6-8 words MAX — lives in a roundel, on pack, at shelf
+- Core claim: 6 words or fewer — lives in a roundel, on pack, at shelf
+- Include a number wherever possible: a timeframe, percentage, fraction, or specific quantity. Numbers anchor claims in evidence and dramatically increase cut-through. "Less shedding in 21 days" beats "less shedding". "Up to 2.5 years longer" beats "longer life".
 - Use owner language, not clinical language
 - Rational first, emotional second
 - No em dashes in claims
@@ -139,7 +140,7 @@ ANTI-PATTERNS TO AVOID:
 - Generic improvement framing: "better digestion", "improved coat", "enhanced wellbeing" — name the specific thing the owner will notice
 
 OUTPUT — return this exact JSON only. No preamble, no markdown, no explanation:
-{"mode":"pack","claims":[{"route_label":"The [approach name]","core_claim":"Short. Specific. 6-8 words max. Owner language. No em dashes.","attribution":"IAMS [relevant product]","source_note":"Small print attribution (e.g. 'Based on Waltham Petcare Science Institute research')","legal_nervousness":{"score":3,"label":"😬 The Concerned Email","explanation":"Why specifically — what element makes legal nervous, and what would fix it."},"rationale":"Which pack principle this uses, why this framing beats the alternatives, and what owner-observable outcome it names."}]}`
+{"mode":"pack","claims":[{"route_label":"The [approach name]","core_claim":"Short. Specific. 6 words max. Includes a number. Owner language. No em dashes.","attribution":"IAMS [relevant product]","source_note":"Small print attribution (e.g. 'Based on Waltham Petcare Science Institute research')","legal_nervousness":{"score":3,"label":"😬 The Concerned Email","explanation":"Why specifically — what element makes legal nervous, and what would fix it."},"rationale":"Which pack principle this uses, why this framing beats the alternatives, and what owner-observable outcome it names."}]}`
 
 // ───────────────────────────────────────────────────────────────────
 // CRITIC PROMPT
@@ -177,6 +178,35 @@ Generate 3 riff variations on the provided claim. Each riff must:
 
 OUTPUT — return this exact JSON only. No preamble, no markdown:
 {"riffs":[{"core_claim":"...","supporting_line":"...","change_note":"What changed and the craft reason — one sentence max"}]}`
+
+// ───────────────────────────────────────────────────────────────────
+// LEGALISE PROMPT
+// ───────────────────────────────────────────────────────────────────
+const LEGALISE_SYSTEM = `You are a regulatory copywriter specialising in FMCG and pet food claim softening. A creative team has a strong pack claim and needs three progressively safer legal permutations of it — each one easier to get through compliance than the last, but preserving as much of the original impact as possible.
+
+THE SOFTENING TOOLKIT — apply these techniques in escalating doses:
+- QUALIFIER PREFIXES: "Up to", "May help", "Can support", "In some dogs/cats"
+- OBSERVER FRAMING: "You may notice", "Many owners report", "Some pets show"
+- TIME SOFTENING: "In as little as X days" instead of "In X days"
+- FRACTIONAL HEDGING: "Up to 25% less" instead of "25% less"
+- CATEGORY COLOUR: "Like no other" / "Unlike anything before" — comparative without a named comparator, hard to challenge
+- SOURCE ANCHORING: Tying the claim to "Waltham research" or "clinical trials" makes hard numbers defensible
+- MECHANISM SHIFT: Move from outcome claim ("shinier coat") to mechanism support claim ("supports the coat from inside") — lower burden of proof
+- SOFT BENEFIT: Replace measurable outcome with owner-perceptible observation — "You'll see the difference" rather than "40% more shine"
+
+STRUCTURE:
+Version 1 — Lightest touch. Minimal softening. Just enough to get past a cautious legal reader. Preserve the punch of the original.
+Version 2 — Moderate softening. One or two qualifiers. Still strong on shelf. Clearly defensible.
+Version 3 — Maximum regulatory safety. Could pass uncontested. Still coherent and useful — not mush. This is the fallback the team can always table.
+
+Each version must:
+- Stay at 6 words or fewer
+- Keep the same structural idea as the original (don't change what the claim is about)
+- Note in one sentence exactly what softening technique was applied and why it reduces legal exposure
+- Include a legal nervousness score (1-5) — Version 1 should be lower than the original, Version 3 should be 1 or 2
+
+OUTPUT — return this exact JSON only. No preamble, no markdown:
+{"legalise":[{"version":1,"label":"Light Touch","core_claim":"...","legal_note":"One sentence: what technique was applied and why it reduces exposure.","legal_nervousness":{"score":2,"label":"🙂 One Raised Eyebrow"}},{"version":2,"label":"Moderate","core_claim":"...","legal_note":"...","legal_nervousness":{"score":2,"label":"🙂 One Raised Eyebrow"}},{"version":3,"label":"Regulatory Safe","core_claim":"...","legal_note":"...","legal_nervousness":{"score":1,"label":"😴 Legal Is Napping"}}]}`
 
 // ───────────────────────────────────────────────────────────────────
 // DATA
@@ -369,28 +399,56 @@ function AdClaimCard({ claim, idx, category, research, onCopy, copied, score }) 
   );
 }
 
+function LegalisePanel({ versions, loading }) {
+  const legalColor = (score) => score <= 2 ? "#86efac" : score === 3 ? "#fde68a" : "#fca5a5";
+  if (loading) return (
+    <div style={{ marginTop: 12, padding: "16px 18px", background: WHITE_12, borderRadius: 12, border: `1px solid ${GLASS_BORDER_SOFT}` }}>
+      <span style={{ fontSize: 12, color: WHITE_45, animation: "pulse 1.2s ease infinite" }}>Legalising...</span>
+    </div>
+  );
+  if (!versions?.length) return null;
+  return (
+    <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+      {versions.map((v, i) => {
+        const sc = v.legal_nervousness?.score || 1;
+        const col = legalColor(sc);
+        return (
+          <div key={i} style={{ padding: "14px 16px", background: WHITE_12, backdropFilter: "blur(12px)", borderRadius: 12, border: `1px solid ${GLASS_BORDER_SOFT}` }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <span style={{ fontSize: 9, color: WHITE_45, letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 600 }}>v{v.version} — {v.label}</span>
+              <span style={{ fontSize: 10, fontWeight: 700, color: col, marginLeft: "auto", textShadow: TS }}>{v.legal_nervousness?.label}</span>
+            </div>
+            <div style={{ fontSize: 17, fontWeight: 700, color: WHITE, marginBottom: 6, textShadow: TS }}>{v.core_claim}</div>
+            <div style={{ fontSize: 10, color: WHITE_45, fontStyle: "italic", letterSpacing: "0.03em" }}>↳ {v.legal_note}</div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function PackClaimCard({ claim, idx, category, onCopy, copied, score: qualityScore }) {
   const [open, setOpen] = useState(false);
   const [hover, setHover] = useState(false);
-  const [riffing, setRiffing] = useState(false);
-  const [riffs, setRiffs] = useState(null);
-  const [showRiffs, setShowRiffs] = useState(false);
+  const [legalising, setLegalising] = useState(false);
+  const [legalVersions, setLegalVersions] = useState(null);
+  const [showLegalise, setShowLegalise] = useState(false);
   const id = `pk-${idx}`;
   const full = `${claim.core_claim}\n${claim.attribution}\n${claim.source_note}`;
   const ln = claim.legal_nervousness || {};
   const score = ln.score || 1;
   const bars = [1, 2, 3, 4, 5];
 
-  const handleRiff = async () => {
-    setShowRiffs(true);
-    if (riffs) return;
-    setRiffing(true);
+  const handleLegalise = async () => {
+    setShowLegalise(true);
+    if (legalVersions) return;
+    setLegalising(true);
     try {
-      const userMsg = `Category: ${category}\n\nPack claim to riff on:\nRoute: ${claim.route_label}\nClaim: ${claim.core_claim}\nAttribution: ${claim.attribution}\n\nGenerate 3 riff variations keeping the pack claim format (6-8 words max for core claim). Return same JSON format with supporting_line as the source_note.`;
-      const result = await callClaude(RIFF_SYSTEM, userMsg);
-      setRiffs(result.riffs);
-    } catch { setRiffs([]); }
-    setRiffing(false);
+      const userMsg = `Category: ${category}\n\nPack claim to legalise:\nRoute: ${claim.route_label}\nClaim: ${claim.core_claim}\nAttribution: ${claim.attribution}\nCurrent legal nervousness score: ${score}/5\n\nGenerate 3 progressively safer regulatory permutations.`;
+      const result = await callClaude(LEGALISE_SYSTEM, userMsg);
+      setLegalVersions(result.legalise);
+    } catch { setLegalVersions([]); }
+    setLegalising(false);
   };
 
   const legalColor = score <= 2 ? "#86efac" : score === 3 ? "#fde68a" : score >= 4 ? "#fca5a5" : WHITE;
@@ -451,8 +509,8 @@ function PackClaimCard({ claim, idx, category, onCopy, copied, score: qualitySco
         <button onClick={() => setOpen(o => !o)} style={pillBtn(false)}>
           {open ? "▲" : "▼"} Rationale
         </button>
-        <button onClick={handleRiff} style={pillBtn(showRiffs)}>
-          ↻ Riff on this
+        <button onClick={handleLegalise} style={pillBtn(showLegalise)}>
+          ⚖ Legalise
         </button>
         <div style={{ marginLeft: "auto" }}>
           <button onClick={() => onCopy(full, id)} style={pillBtn(copied === id)}>
@@ -467,7 +525,7 @@ function PackClaimCard({ claim, idx, category, onCopy, copied, score: qualitySco
         </div>
       )}
 
-      {showRiffs && <RiffPanel riffs={riffs} loading={riffing} />}
+      {showLegalise && <LegalisePanel versions={legalVersions} loading={legalising} />}
     </div>
   );
 }
