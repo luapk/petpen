@@ -142,6 +142,28 @@ OUTPUT — return this exact JSON only. No preamble, no markdown, no explanation
 {"mode":"pack","claims":[{"route_label":"The [approach name]","core_claim":"Short. Specific. 6-8 words max. Owner language. No em dashes.","attribution":"IAMS [relevant product]","source_note":"Small print attribution (e.g. 'Based on Waltham Petcare Science Institute research')","legal_nervousness":{"score":3,"label":"😬 The Concerned Email","explanation":"Why specifically — what element makes legal nervous, and what would fix it."},"rationale":"Which pack principle this uses, why this framing beats the alternatives, and what owner-observable outcome it names."}]}`
 
 // ───────────────────────────────────────────────────────────────────
+// CRITIC PROMPT
+// ───────────────────────────────────────────────────────────────────
+const CRITIC_SYSTEM = `You are a rigorous quality critic for advertising and pack claims. Score each claim honestly from 1-10. Be strict — most AI-generated claims cluster around 6-7. Reserve 8+ for claims that are genuinely specific, surprising, and IAMS-ownable.
+
+ADVERTISING CLAIM SCORING CRITERIA:
+9-10: Genuinely surprising angle, human truth earned not stated, IAMS-specific (swap test: fails without brand name), passes all anti-pattern checks, provokes a reaction
+7-8: Solid craft, mostly specific, passes most checks — presentable but with room to push
+5-6: Could work for any pet food brand, insight is soft or generic, anti-patterns lurking
+1-4: Adspeak, category boilerplate, explains the brief, or fails the translation chain entirely
+
+PACK CLAIM SCORING CRITERIA:
+9-10: Owner-observable outcome in everyday language, specific timeframe or number, genuinely useful in a roundel, names something the owner is already worried about
+7-8: Good structure, mostly specific, appropriate language, correct timeframe window
+5-6: Vague benefit, improvement framing ("better digestion"), or slight lab language present
+1-4: Ingredient list, hedge overload, generic boilerplate, or clinical language throughout
+
+Score each claim at the index it appears (0-based). For any claim scoring below 8, note the single most important specific weakness in one sentence.
+
+OUTPUT — return this exact JSON only. No preamble, no markdown, no explanation:
+{"scores":[{"idx":0,"score":7,"weakness":"One sentence on the specific weakness — or null if score is 8 or above."}]}`
+
+// ───────────────────────────────────────────────────────────────────
 // RIFF PROMPT
 // ───────────────────────────────────────────────────────────────────
 const RIFF_SYSTEM = `You are a D&AD-standard advertising copywriter. A creative director likes a claim but wants to explore variations before committing.
@@ -169,6 +191,48 @@ const PRODUCT_MAP = {
   "Energy & Vitality":"IAMS Active","Dental Health":"IAMS Dental Care",
   "Immune Support":"IAMS Immunity","Joint Health":"IAMS Joint Care","Kidney Health":"IAMS Kidney Care"
 };
+
+// ───────────────────────────────────────────────────────────────────
+// CRITIC + REFINE PIPELINE
+// ───────────────────────────────────────────────────────────────────
+async function runCriticAndRefine(claims, systemPrompt, mode, userMsg) {
+  try {
+    // Step 1: score all claims
+    const claimsText = claims.map((c, i) => {
+      const body = mode === "advertising"
+        ? `Route: ${c.route_label}\nHeadline: ${c.core_claim}\nSupporting: ${c.supporting_line || ""}`
+        : `Route: ${c.route_label}\nClaim: ${c.core_claim}\nSource: ${c.source_note || ""}`;
+      return `[${i}] ${body}`;
+    }).join("\n\n");
+
+    const criticResult = await callClaude(CRITIC_SYSTEM, `Mode: ${mode}\n\nClaims to score:\n${claimsText}`);
+    const rawScores = criticResult.scores || [];
+    const scoreValues = claims.map((_, i) => {
+      const s = rawScores.find(s => s.idx === i);
+      return s ? s.score : 7;
+    });
+
+    // Step 2: identify low scorers (under 7)
+    const lowScorers = rawScores.filter(s => s.score < 7);
+    if (lowScorers.length === 0) return { scoreValues, updatedClaims: claims };
+
+    // Step 3: regenerate low scorers in one targeted pass
+    const regenMsg = `${userMsg}\n\nIMPROVEMENT PASS: ${lowScorers.length} claim(s) scored below 7 and must be replaced. Address each specific weakness noted. Generate exactly ${lowScorers.length} replacement claim(s). Return the standard JSON format.\n\n${
+      lowScorers.map((s, i) => `Replacement ${i + 1} (replacing route: ${claims[s.idx]?.route_label})\nWeakness: ${s.weakness}`).join("\n\n")
+    }`;
+    const regenResult = await callClaude(systemPrompt, regenMsg);
+    const improved = regenResult.claims || [];
+
+    const updatedClaims = [...claims];
+    lowScorers.forEach((s, i) => {
+      if (improved[i]) updatedClaims[s.idx] = { ...improved[i], _refined: true };
+    });
+
+    return { scoreValues, updatedClaims };
+  } catch {
+    return null; // graceful degradation — caller keeps original results
+  }
+}
 
 // ───────────────────────────────────────────────────────────────────
 // API HELPER
@@ -230,7 +294,7 @@ function RiffPanel({ riffs, loading }) {
   );
 }
 
-function AdClaimCard({ claim, idx, category, research, onCopy, copied }) {
+function AdClaimCard({ claim, idx, category, research, onCopy, copied, score }) {
   const [open, setOpen] = useState(false);
   const [hover, setHover] = useState(false);
   const [riffing, setRiffing] = useState(false);
@@ -265,6 +329,14 @@ function AdClaimCard({ claim, idx, category, research, onCopy, copied }) {
         <span style={{ fontSize: 10, color: WHITE_70, letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 500, textShadow: TS }}>
           {claim.route_label}
         </span>
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6 }}>
+          {claim._refined && <span style={{ fontSize: 9, color: WHITE_45, letterSpacing: "0.1em", textTransform: "uppercase" }}>✦ refined</span>}
+          {score != null && <span style={{
+            fontSize: 10, fontWeight: 700, fontFamily: "'Roboto Mono',monospace",
+            color: score >= 8 ? "#86efac" : score >= 7 ? "#fde68a" : "#fca5a5",
+            textShadow: TS,
+          }}>{score}/10</span>}
+        </div>
       </div>
 
       <div style={{ fontSize: 26, fontWeight: 700, lineHeight: 1.2, color: WHITE, marginBottom: 10, textShadow: TS }}>{claim.core_claim}</div>
@@ -300,7 +372,7 @@ function AdClaimCard({ claim, idx, category, research, onCopy, copied }) {
   );
 }
 
-function PackClaimCard({ claim, idx, category, onCopy, copied }) {
+function PackClaimCard({ claim, idx, category, onCopy, copied, score: qualityScore }) {
   const [open, setOpen] = useState(false);
   const [hover, setHover] = useState(false);
   const [riffing, setRiffing] = useState(false);
@@ -340,6 +412,14 @@ function PackClaimCard({ claim, idx, category, onCopy, copied }) {
         <span style={{ fontSize: 10, color: WHITE_70, letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 500, textShadow: TS }}>
           {claim.route_label}
         </span>
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6 }}>
+          {claim._refined && <span style={{ fontSize: 9, color: WHITE_45, letterSpacing: "0.1em", textTransform: "uppercase" }}>✦ refined</span>}
+          {qualityScore != null && <span style={{
+            fontSize: 10, fontWeight: 700, fontFamily: "'Roboto Mono',monospace",
+            color: qualityScore >= 8 ? "#86efac" : qualityScore >= 7 ? "#fde68a" : "#fca5a5",
+            textShadow: TS,
+          }}>{qualityScore}/10</span>}
+        </div>
       </div>
 
       <div style={{ fontSize: 26, fontWeight: 700, lineHeight: 1.2, color: WHITE, marginBottom: 10, textShadow: TS }}>{claim.core_claim}</div>
@@ -443,6 +523,10 @@ export default function App() {
   const [packResults, setPackResults] = useState(null);
   const [adLoading, setAdLoading] = useState(false);
   const [packLoading, setPackLoading] = useState(false);
+  const [adRefining, setAdRefining] = useState(false);
+  const [packRefining, setPackRefining] = useState(false);
+  const [adScores, setAdScores] = useState(null);
+  const [packScores, setPackScores] = useState(null);
   const [error, setError] = useState(null);
   const [copied, setCopied] = useState(null);
   const [focused, setFocused] = useState(false);
@@ -463,6 +547,8 @@ export default function App() {
     setError(null);
     setAdResults(null);
     setPackResults(null);
+    setAdScores(null);
+    setPackScores(null);
 
     const userMsg = `Categories: ${categories.join(', ')}\n\nResearch:\n${research.trim()}`;
 
@@ -471,8 +557,15 @@ export default function App() {
       try {
         const res = await callClaude(AD_SYSTEM, userMsg + "\n\nGenerate 5 advertising headline claim routes.");
         setAdResults(res);
-      } catch (e) { setError(e.message); }
-      setAdLoading(false);
+        setAdLoading(false);
+        setAdRefining(true);
+        const refined = await runCriticAndRefine(res.claims, AD_SYSTEM, "advertising", userMsg);
+        if (refined) {
+          setAdScores(refined.scoreValues);
+          setAdResults({ ...res, claims: refined.updatedClaims });
+        }
+      } catch (e) { setError(e.message); setAdLoading(false); }
+      setAdRefining(false);
     };
 
     const runPack = async () => {
@@ -480,8 +573,15 @@ export default function App() {
       try {
         const res = await callClaude(PACK_SYSTEM, userMsg + "\n\nGenerate 5 pack/roundel claims.");
         setPackResults(res);
-      } catch (e) { setError(e.message); }
-      setPackLoading(false);
+        setPackLoading(false);
+        setPackRefining(true);
+        const refined = await runCriticAndRefine(res.claims, PACK_SYSTEM, "pack", userMsg);
+        if (refined) {
+          setPackScores(refined.scoreValues);
+          setPackResults({ ...res, claims: refined.updatedClaims });
+        }
+      } catch (e) { setError(e.message); setPackLoading(false); }
+      setPackRefining(false);
     };
 
     if (mode === "advertising") await runAd();
@@ -497,17 +597,17 @@ export default function App() {
 
   const copyAdAll = () => {
     if (!adResults) return;
-    const txt = adResults.claims.map((c, i) => `${String(i+1).padStart(2,"0")}. ${c.route_label}\n${c.core_claim}\n${c.supporting_line}\n${c.attribution}`).join("\n\n---\n\n");
+    const txt = adResults.claims.map((c, i) => `${String(i+1).padStart(2,"00")}. ${c.route_label}\n${c.core_claim}\n${c.supporting_line}\n${c.attribution}`).join("\n\n---\n\n");
     navigator.clipboard.writeText(txt); setCopied("ad-all"); setTimeout(() => setCopied(null), 2000);
   };
 
   const copyPackAll = () => {
     if (!packResults) return;
-    const txt = packResults.claims.map((c, i) => `${String(i+1).padStart(2,"0")}. ${c.route_label}\n${c.core_claim}\n${c.attribution}\n${c.source_note}`).join("\n\n---\n\n");
+    const txt = packResults.claims.map((c, i) => `${String(i+1).padStart(2,"00")}. ${c.route_label}\n${c.core_claim}\n${c.attribution}\n${c.source_note}`).join("\n\n---\n\n");
     navigator.clipboard.writeText(txt); setCopied("pk-all"); setTimeout(() => setCopied(null), 2000);
   };
 
-  const reset = () => { setAdResults(null); setPackResults(null); setResearch(""); setError(null); };
+  const reset = () => { setAdResults(null); setPackResults(null); setAdScores(null); setPackScores(null); setResearch(""); setError(null); };
 
   const modeButtons = [
     {
@@ -680,10 +780,15 @@ export default function App() {
             {adResults && !adLoading && (
               <>
                 <SectionHeader label={`advertising routes — ${catLabel}`} count={adResults.claims?.length} onCopyAll={copyAdAll} copied={copied === "ad-all"} />
+                {adRefining && (
+                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", letterSpacing: "0.08em", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ animation: "spin 1s linear infinite", display: "inline-block" }}>◌</span> Scoring and refining...
+                  </div>
+                )}
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   {adResults.claims?.map((c, i) => (
                     <div key={i} style={{ animation: `fadeUp 0.4s ease ${i * 0.06}s both` }}>
-                      <AdClaimCard claim={c} idx={i} category={catLabel} research={research} onCopy={copyText} copied={copied} />
+                      <AdClaimCard claim={c} idx={i} category={catLabel} research={research} onCopy={copyText} copied={copied} score={adScores?.[i]} />
                     </div>
                   ))}
                 </div>
@@ -704,10 +809,15 @@ export default function App() {
             {packResults && !packLoading && (
               <>
                 <SectionHeader label={`pack claims — ${catLabel}`} count={packResults.claims?.length} onCopyAll={copyPackAll} copied={copied === "pk-all"} />
+                {packRefining && (
+                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", letterSpacing: "0.08em", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ animation: "spin 1s linear infinite", display: "inline-block" }}>◌</span> Scoring and refining...
+                  </div>
+                )}
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   {packResults.claims?.map((c, i) => (
                     <div key={i} style={{ animation: `fadeUp 0.4s ease ${i * 0.06}s both` }}>
-                      <PackClaimCard claim={c} idx={i} category={catLabel} onCopy={copyText} copied={copied} />
+                      <PackClaimCard claim={c} idx={i} category={catLabel} onCopy={copyText} copied={copied} score={packScores?.[i]} />
                     </div>
                   ))}
                 </div>
