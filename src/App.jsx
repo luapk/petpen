@@ -197,7 +197,6 @@ const PRODUCT_MAP = {
 // ───────────────────────────────────────────────────────────────────
 async function runCriticAndRefine(claims, systemPrompt, mode, userMsg) {
   try {
-    // Step 1: score all claims
     const claimsText = claims.map((c, i) => {
       const body = mode === "advertising"
         ? `Route: ${c.route_label}\nHeadline: ${c.core_claim}\nSupporting: ${c.supporting_line || ""}`
@@ -212,11 +211,9 @@ async function runCriticAndRefine(claims, systemPrompt, mode, userMsg) {
       return s ? s.score : 7;
     });
 
-    // Step 2: identify low scorers (under 7)
     const lowScorers = rawScores.filter(s => s.score < 7);
     if (lowScorers.length === 0) return { scoreValues, updatedClaims: claims };
 
-    // Step 3: regenerate low scorers in one targeted pass
     const regenMsg = `${userMsg}\n\nIMPROVEMENT PASS: ${lowScorers.length} claim(s) scored below 7 and must be replaced. Address each specific weakness noted. Generate exactly ${lowScorers.length} replacement claim(s). Return the standard JSON format.\n\n${
       lowScorers.map((s, i) => `Replacement ${i + 1} (replacing route: ${claims[s.idx]?.route_label})\nWeakness: ${s.weakness}`).join("\n\n")
     }`;
@@ -230,7 +227,7 @@ async function runCriticAndRefine(claims, systemPrompt, mode, userMsg) {
 
     return { scoreValues, updatedClaims };
   } catch {
-    return null; // graceful degradation — caller keeps original results
+    return null;
   }
 }
 
@@ -305,7 +302,7 @@ function AdClaimCard({ claim, idx, category, research, onCopy, copied, score }) 
 
   const handleRiff = async () => {
     setShowRiffs(true);
-    if (riffs) return; // already loaded
+    if (riffs) return;
     setRiffing(true);
     try {
       const userMsg = `Category: ${category}\n\nClaim to riff on:\nRoute: ${claim.route_label}\nHeadline: ${claim.core_claim}\nSupporting: ${claim.supporting_line}\nAttribution: ${claim.attribution}\n\nGenerate 3 riff variations.`;
@@ -331,9 +328,9 @@ function AdClaimCard({ claim, idx, category, research, onCopy, copied, score }) 
         </span>
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6 }}>
           {claim._refined && <span style={{ fontSize: 9, color: WHITE_45, letterSpacing: "0.1em", textTransform: "uppercase" }}>✦ refined</span>}
-          {score != null && <span style={{
+          {score != null && score >= 7 && <span style={{
             fontSize: 10, fontWeight: 700, fontFamily: "'Roboto Mono',monospace",
-            color: score >= 8 ? "#86efac" : score >= 7 ? "#fde68a" : "#fca5a5",
+            color: score >= 8 ? "#86efac" : "#fde68a",
             textShadow: TS,
           }}>{score}/10</span>}
         </div>
@@ -414,9 +411,9 @@ function PackClaimCard({ claim, idx, category, onCopy, copied, score: qualitySco
         </span>
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6 }}>
           {claim._refined && <span style={{ fontSize: 9, color: WHITE_45, letterSpacing: "0.1em", textTransform: "uppercase" }}>✦ refined</span>}
-          {qualityScore != null && <span style={{
+          {qualityScore != null && qualityScore >= 7 && <span style={{
             fontSize: 10, fontWeight: 700, fontFamily: "'Roboto Mono',monospace",
-            color: qualityScore >= 8 ? "#86efac" : qualityScore >= 7 ? "#fde68a" : "#fca5a5",
+            color: qualityScore >= 8 ? "#86efac" : "#fde68a",
             textShadow: TS,
           }}>{qualityScore}/10</span>}
         </div>
@@ -516,7 +513,7 @@ function SectionHeader({ label, count, onCopyAll, copied }) {
 // APP
 // ───────────────────────────────────────────────────────────────────
 export default function App() {
-  const [mode, setMode] = useState("advertising"); // advertising | pack | both
+  const [mode, setMode] = useState("advertising");
   const [categories, setCategories] = useState(["Gut Health"]);
   const [research, setResearch] = useState("");
   const [adResults, setAdResults] = useState(null);
@@ -597,13 +594,13 @@ export default function App() {
 
   const copyAdAll = () => {
     if (!adResults) return;
-    const txt = adResults.claims.map((c, i) => `${String(i+1).padStart(2,"00")}. ${c.route_label}\n${c.core_claim}\n${c.supporting_line}\n${c.attribution}`).join("\n\n---\n\n");
+    const txt = adResults.claims.map((c, i) => `${String(i+1).padStart(2,"0")}. ${c.route_label}\n${c.core_claim}\n${c.supporting_line}\n${c.attribution}`).join("\n\n---\n\n");
     navigator.clipboard.writeText(txt); setCopied("ad-all"); setTimeout(() => setCopied(null), 2000);
   };
 
   const copyPackAll = () => {
     if (!packResults) return;
-    const txt = packResults.claims.map((c, i) => `${String(i+1).padStart(2,"00")}. ${c.route_label}\n${c.core_claim}\n${c.attribution}\n${c.source_note}`).join("\n\n---\n\n");
+    const txt = packResults.claims.map((c, i) => `${String(i+1).padStart(2,"0")}. ${c.route_label}\n${c.core_claim}\n${c.attribution}\n${c.source_note}`).join("\n\n---\n\n");
     navigator.clipboard.writeText(txt); setCopied("pk-all"); setTimeout(() => setCopied(null), 2000);
   };
 
@@ -640,7 +637,6 @@ export default function App() {
         button{font-family:'Roboto',sans-serif}
       `}</style>
 
-      {/* Hero title */}
       <div style={{ textAlign: "center", padding: "52px 24px 36px", userSelect: "none" }}>
         <div style={{
           fontFamily: "'Cormorant Garamond', Georgia, serif",
@@ -659,7 +655,6 @@ export default function App() {
 
       <main style={{ maxWidth: 820, margin: "0 auto", padding: "0 24px 80px" }}>
 
-        {/* Mode — with tooltips */}
         <div style={{ fontSize: 10, color: WHITE_45, letterSpacing: "0.12em", textTransform: "uppercase", fontWeight: 500, marginBottom: 10, textShadow: TS }}>Mode</div>
         <div style={{ display: "flex", gap: 8, marginBottom: 28 }}>
           {modeButtons.map(m => (
@@ -694,7 +689,6 @@ export default function App() {
           ))}
         </div>
 
-        {/* Category — multi-select */}
         <div style={{ fontSize: 10, color: WHITE_45, letterSpacing: "0.12em", textTransform: "uppercase", fontWeight: 500, marginBottom: 10, textShadow: TS }}>
           Category
           <span style={{ marginLeft: 8, color: WHITE_25, fontWeight: 300, letterSpacing: "0.04em", textTransform: "none", fontSize: 9 }}>select one or more</span>
@@ -716,7 +710,6 @@ export default function App() {
           })}
         </div>
 
-        {/* Research input */}
         <div style={{ fontSize: 10, color: WHITE_45, letterSpacing: "0.12em", textTransform: "uppercase", fontWeight: 500, marginBottom: 10, textShadow: TS }}>Research Input</div>
         <textarea
           value={research}
@@ -737,7 +730,6 @@ export default function App() {
           }}
         />
 
-        {/* Generate — no textShadow on button text */}
         <button
           onClick={generate}
           disabled={!research.trim() || isLoading}
@@ -768,7 +760,6 @@ export default function App() {
           </div>
         )}
 
-        {/* ADVERTISING RESULTS */}
         {(adLoading || adResults) && (
           <div style={{ animation: "fadeUp 0.4s ease both", marginBottom: mode === "both" ? 40 : 0 }}>
             {mode === "both" && (
@@ -797,7 +788,6 @@ export default function App() {
           </div>
         )}
 
-        {/* PACK RESULTS */}
         {(packLoading || packResults) && (
           <div style={{ animation: "fadeUp 0.4s ease both" }}>
             {mode === "both" && (
@@ -826,7 +816,6 @@ export default function App() {
           </div>
         )}
 
-        {/* Reset */}
         {(adResults || packResults) && !isLoading && (
           <div style={{ textAlign: "center", marginTop: 32 }}>
             <button onClick={reset} style={{ fontSize: 10, color: WHITE_45, background: "none", border: "none", cursor: "pointer", letterSpacing: "0.1em", textTransform: "uppercase", textShadow: TS }}>
