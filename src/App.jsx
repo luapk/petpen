@@ -594,13 +594,13 @@ export default function App() {
 
   const copyAdAll = () => {
     if (!adResults) return;
-    const txt = adResults.claims.map((c, i) => `${String(i+1).padStart(2,"0")}. ${c.route_label}\n${c.core_claim}\n${c.supporting_line}\n${c.attribution}`).join("\n\n---\n\n");
+    const txt = adResults.claims.map((c, i) => `${String(i+1).padStart(2,"00")}. ${c.route_label}\n${c.core_claim}\n${c.supporting_line}\n${c.attribution}`).join("\n\n---\n\n");
     navigator.clipboard.writeText(txt); setCopied("ad-all"); setTimeout(() => setCopied(null), 2000);
   };
 
   const copyPackAll = () => {
     if (!packResults) return;
-    const txt = packResults.claims.map((c, i) => `${String(i+1).padStart(2,"0")}. ${c.route_label}\n${c.core_claim}\n${c.attribution}\n${c.source_note}`).join("\n\n---\n\n");
+    const txt = packResults.claims.map((c, i) => `${String(i+1).padStart(2,"00")}. ${c.route_label}\n${c.core_claim}\n${c.attribution}\n${c.source_note}`).join("\n\n---\n\n");
     navigator.clipboard.writeText(txt); setCopied("pk-all"); setTimeout(() => setCopied(null), 2000);
   };
 
@@ -714,8 +714,13 @@ export default function App() {
   const catLabel = categories.length === 1 ? categories[0] : `${categories.length} categories`;
 
   return (
-    <div style={{ minHeight: "100vh", background: BG, fontFamily: "'Roboto',sans-serif", color: WHITE }}>
+    <div style={{ minHeight: "100vh", background: BG, fontFamily: "'Roboto',sans-serif", color: WHITE, position: "relative", overflow: "hidden" }}>
       <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700;900&family=Roboto+Mono:wght@400;500&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet" />
+      <img src="/DOG.png" alt="" style={{
+        position: "absolute", bottom: 0, left: "50%", transform: "translateX(-50%)",
+        width: "100%", maxWidth: 1200, pointerEvents: "none", zIndex: 0,
+        opacity: 0.18, userSelect: "none",
+      }} />
       <style>{`
         @keyframes pulse{0%,100%{opacity:.35}50%{opacity:.7}}
         @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
@@ -727,7 +732,7 @@ export default function App() {
         button{font-family:'Roboto',sans-serif}
       `}</style>
 
-      <div style={{ textAlign: "center", padding: "52px 24px 36px", userSelect: "none" }}>
+      <div style={{ textAlign: "center", padding: "52px 24px 36px", userSelect: "none", position: "relative", zIndex: 1 }}>
         <div style={{
           fontFamily: "'Cormorant Garamond', Georgia, serif",
           fontSize: "clamp(52px, 8vw, 88px)",
@@ -743,7 +748,7 @@ export default function App() {
         <div style={{ width: 48, height: 1, background: GLASS_BORDER, margin: "20px auto 0" }} />
       </div>
 
-      <main style={{ maxWidth: 820, margin: "0 auto", padding: "0 24px 80px" }}>
+      <main style={{ maxWidth: 820, margin: "0 auto", padding: "0 24px 80px", position: "relative", zIndex: 1 }}>
 
         <div style={{ fontSize: 10, color: WHITE_45, letterSpacing: "0.12em", textTransform: "uppercase", fontWeight: 500, marginBottom: 10, textShadow: TS }}>Mode</div>
         <div style={{ display: "flex", gap: 8, marginBottom: 28 }}>
