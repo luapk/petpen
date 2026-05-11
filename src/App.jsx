@@ -514,6 +514,8 @@ function SectionHeader({ label, count, onCopyAll, copied }) {
 // ───────────────────────────────────────────────────────────────────
 export default function App() {
   const [mode, setMode] = useState("advertising");
+  const [petType, setPetType] = useState("dog");
+  const [insideOut, setInsideOut] = useState(false);
   const [categories, setCategories] = useState(["Gut Health"]);
   const [research, setResearch] = useState("");
   const [adResults, setAdResults] = useState(null);
@@ -547,12 +549,16 @@ export default function App() {
     setAdScores(null);
     setPackScores(null);
 
-    const userMsg = `Categories: ${categories.join(', ')}\n\nResearch:\n${research.trim()}`;
+    const userMsg = `Pet: ${petType === "dog" ? "Dog" : "Cat"}\nCategories: ${categories.join(', ')}\n\nResearch:\n${research.trim()}`;
+
+    const insideOutDirective = insideOut
+      ? "\n\nDIRECTION: \"Love Them Inside Out\" is the creative lens for this brief. The hidden inside mechanism (gut bacteria, follicle cells, immune cells, muscle fibres) causes the visible outside result the owner can see, feel or notice. This duality — invisible cause, observable effect — must drive at least three of the five routes, either implicitly (the structure of the claim suggests inside/out causality) or explicitly (the copy names the mechanism or the contrast). The inside/out idea should feel like the brief was written from it."
+      : "";
 
     const runAd = async () => {
       setAdLoading(true);
       try {
-        const res = await callClaude(AD_SYSTEM, userMsg + "\n\nGenerate 5 advertising headline claim routes.");
+        const res = await callClaude(AD_SYSTEM, userMsg + "\n\nGenerate 5 advertising headline claim routes." + insideOutDirective);
         setAdResults(res);
         setAdLoading(false);
         setAdRefining(true);
@@ -584,7 +590,7 @@ export default function App() {
     if (mode === "advertising") await runAd();
     else if (mode === "pack") await runPack();
     else await Promise.all([runAd(), runPack()]);
-  }, [mode, categories, research, isLoading]);
+  }, [mode, petType, insideOut, categories, research, isLoading]);
 
   const copyText = (text, id) => {
     navigator.clipboard.writeText(text);
@@ -784,6 +790,21 @@ export default function App() {
           ))}
         </div>
 
+        <div style={{ fontSize: 10, color: WHITE_45, letterSpacing: "0.12em", textTransform: "uppercase", fontWeight: 500, marginBottom: 10, textShadow: TS }}>Pet Type</div>
+        <div style={{ display: "flex", gap: 8, marginBottom: 28 }}>
+          {[["dog", "Dog"], ["cat", "Cat"]].map(([val, label]) => (
+            <button key={val} onClick={() => { setPetType(val); setAdResults(null); setPackResults(null); }} style={{
+              padding: "6px 20px", borderRadius: 20,
+              border: `1px solid ${petType === val ? GLASS_BORDER : GLASS_BORDER_SOFT}`,
+              background: petType === val ? GLASS : WHITE_12,
+              backdropFilter: "blur(10px)",
+              color: petType === val ? WHITE : WHITE_70,
+              fontSize: 12, fontWeight: petType === val ? 600 : 400,
+              cursor: "pointer", transition: "all 0.2s ease", textShadow: TS,
+            }}>{petType === val && <span style={{ marginRight: 4, fontSize: 10 }}>✓</span>}{label}</button>
+          ))}
+        </div>
+
         <div style={{ fontSize: 10, color: WHITE_45, letterSpacing: "0.12em", textTransform: "uppercase", fontWeight: 500, marginBottom: 10, textShadow: TS }}>
           Category
           <span style={{ marginLeft: 8, color: WHITE_25, fontWeight: 300, letterSpacing: "0.04em", textTransform: "none", fontSize: 9 }}>select one or more</span>
@@ -803,6 +824,19 @@ export default function App() {
               }}>{active && <span style={{ marginRight: 4, fontSize: 10 }}>✓</span>}{cat}</button>
             );
           })}
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 28 }}>
+          <button onClick={() => { setInsideOut(o => !o); setAdResults(null); setPackResults(null); }} style={{
+            padding: "6px 16px", borderRadius: 20, flexShrink: 0,
+            border: `1px solid ${insideOut ? GLASS_BORDER : GLASS_BORDER_SOFT}`,
+            background: insideOut ? GLASS : WHITE_12,
+            backdropFilter: "blur(10px)",
+            color: insideOut ? WHITE : WHITE_70,
+            fontSize: 12, fontWeight: insideOut ? 600 : 400,
+            cursor: "pointer", transition: "all 0.2s ease", textShadow: TS,
+          }}>{insideOut && <span style={{ marginRight: 4, fontSize: 10 }}>✓</span>}Love Them Inside Out</button>
+          <span style={{ fontSize: 10, color: WHITE_25, fontWeight: 300, lineHeight: 1.4 }}>Leans advertising routes into the inside/outside duality</span>
         </div>
 
         <div style={{ fontSize: 10, color: WHITE_45, letterSpacing: "0.12em", textTransform: "uppercase", fontWeight: 500, marginBottom: 10, textShadow: TS }}>Research Input</div>
