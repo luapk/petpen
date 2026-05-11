@@ -725,7 +725,7 @@ export default function App() {
       <img src={dogImg} alt="" style={{
         position: "fixed", bottom: 0, left: 0,
         width: "100vw", pointerEvents: "none", zIndex: 0,
-        opacity: 1, mixBlendMode: "screen", userSelect: "none",
+        opacity: 1, userSelect: "none",
       }} />
       <style>{`
         @keyframes pulse{0%,100%{opacity:.35}50%{opacity:.7}}
