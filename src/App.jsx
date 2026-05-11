@@ -606,6 +606,96 @@ export default function App() {
 
   const reset = () => { setAdResults(null); setPackResults(null); setAdScores(null); setPackScores(null); setResearch(""); setError(null); };
 
+  const downloadPDF = () => {
+    const date = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+    const legalEmoji = { 1: "😴", 2: "🙂", 3: "😬", 4: "😰", 5: "😱" };
+
+    const adHtml = adResults?.claims?.map((c, i) => {
+      const score = adScores?.[i];
+      return `
+        <div class="claim">
+          <div class="claim-header">
+            <span class="idx">${String(i + 1).padStart(2, "0")}</span>
+            <span class="route">${c.route_label}</span>
+            ${score != null && score >= 7 ? `<span class="score ${score >= 8 ? "green" : "amber"}">${score}/10</span>` : ""}
+            ${c._refined ? `<span class="refined">✦ refined</span>` : ""}
+          </div>
+          <div class="core">${c.core_claim}</div>
+          ${c.supporting_line ? `<div class="supporting">${c.supporting_line}</div>` : ""}
+          <div class="attribution">${c.attribution}</div>
+          <div class="rationale"><strong>Rationale:</strong> ${c.rationale}</div>
+        </div>`;
+    }).join("") || "";
+
+    const packHtml = packResults?.claims?.map((c, i) => {
+      const score = packScores?.[i];
+      const ln = c.legal_nervousness || {};
+      const lScore = ln.score || 1;
+      return `
+        <div class="claim">
+          <div class="claim-header">
+            <span class="idx">${String(i + 1).padStart(2, "0")}</span>
+            <span class="route">${c.route_label}</span>
+            ${score != null && score >= 7 ? `<span class="score ${score >= 8 ? "green" : "amber"}">${score}/10</span>` : ""}
+            ${c._refined ? `<span class="refined">✦ refined</span>` : ""}
+          </div>
+          <div class="core">${c.core_claim}</div>
+          <div class="attribution">${c.attribution}</div>
+          ${c.source_note ? `<div class="source">${c.source_note}</div>` : ""}
+          <div class="legal-box">
+            <span class="legal-label">Legal Nervousness</span>
+            <span class="legal-score">${legalEmoji[lScore] || ""} ${ln.label || ""}</span>
+            ${ln.explanation ? `<div class="legal-exp">${ln.explanation}</div>` : ""}
+          </div>
+          <div class="rationale"><strong>Rationale:</strong> ${c.rationale}</div>
+        </div>`;
+    }).join("") || "";
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+    <title>PetScribe® — ${catLabel} — ${date}</title>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;600;700&family=Cormorant+Garamond:wght@300;400&display=swap');
+      *{box-sizing:border-box;margin:0;padding:0}
+      body{font-family:'Roboto',sans-serif;color:#1a1a2e;background:#fff;padding:48px 56px;max-width:800px;margin:0 auto}
+      h1{font-family:'Cormorant Garamond',serif;font-weight:300;font-size:48px;letter-spacing:-0.03em;color:#1a1a2e;margin-bottom:4px}
+      .meta{font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:#888;margin-bottom:8px}
+      .divider{height:1px;background:#ddd;margin:20px 0 32px}
+      .section-title{font-size:10px;letter-spacing:0.14em;text-transform:uppercase;font-weight:600;color:#666;margin-bottom:20px;padding-bottom:8px;border-bottom:1px solid #eee}
+      .claim{margin-bottom:32px;padding-bottom:32px;border-bottom:1px solid #f0f0f0}
+      .claim:last-child{border-bottom:none}
+      .claim-header{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+      .idx{width:22px;height:22px;display:flex;align-items:center;justify-content:center;background:#f5f5f5;border:1px solid #e0e0e0;border-radius:5px;font-size:9px;font-weight:700;font-family:monospace;flex-shrink:0}
+      .route{font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:#888;font-weight:500}
+      .score{font-size:9px;font-weight:700;font-family:monospace;padding:2px 6px;border-radius:4px}
+      .score.green{color:#166534;background:#dcfce7}
+      .score.amber{color:#92400e;background:#fef3c7}
+      .refined{font-size:8px;color:#aaa;letter-spacing:0.1em;text-transform:uppercase}
+      .core{font-size:28px;font-weight:700;line-height:1.2;color:#1a1a2e;margin-bottom:10px}
+      .supporting{font-size:14px;color:#555;line-height:1.7;margin-bottom:8px;font-weight:300}
+      .attribution{font-size:10px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:#1a1a2e;margin-bottom:12px}
+      .source{font-size:10px;color:#999;font-style:italic;margin-bottom:10px}
+      .legal-box{background:#fafafa;border:1px solid #eee;border-radius:8px;padding:10px 12px;margin-bottom:12px}
+      .legal-label{font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:#aaa;display:block;margin-bottom:4px}
+      .legal-score{font-size:11px;font-weight:600;color:#1a1a2e}
+      .legal-exp{font-size:11px;color:#666;margin-top:6px;line-height:1.5;font-weight:300}
+      .rationale{font-size:11px;color:#777;line-height:1.6;font-weight:300;font-style:italic}
+      .section-gap{margin-top:40px}
+      @media print{body{padding:32px 40px}h1{font-size:36px}}
+    </style></head><body>
+    <div class="meta">adam&amp;eveTBWA · PetScribe® · ${date}</div>
+    <h1>PetScribe<sup style="font-size:0.3em;vertical-align:super;font-weight:400">®</sup></h1>
+    <div class="meta" style="margin-top:6px">Categories: ${categories.join(", ")}</div>
+    <div class="divider"></div>
+    ${adHtml ? `<div class="section-title">⚡ Advertising Routes</div>${adHtml}` : ""}
+    ${packHtml ? `<div class="section-title section-gap">◉ Pack Claims</div>${packHtml}` : ""}
+    <script>window.onload=function(){window.print()}<\/script>
+    </body></html>`;
+
+    const w = window.open("", "_blank");
+    w.document.write(html);
+    w.document.close();
+  };
+
   const modeButtons = [
     {
       id: "advertising", icon: "⚡", label: "Advertising", desc: "Warm, human, memorable",
@@ -817,7 +907,10 @@ export default function App() {
         )}
 
         {(adResults || packResults) && !isLoading && (
-          <div style={{ textAlign: "center", marginTop: 32 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 20, marginTop: 32 }}>
+            <button onClick={downloadPDF} style={{ fontSize: 10, color: WHITE_70, background: GLASS_CARD, backdropFilter: "blur(12px)", border: `1px solid ${GLASS_BORDER_SOFT}`, borderRadius: 20, padding: "6px 16px", cursor: "pointer", letterSpacing: "0.1em", textTransform: "uppercase", textShadow: TS }}>
+              ↓ Download PDF
+            </button>
             <button onClick={reset} style={{ fontSize: 10, color: WHITE_45, background: "none", border: "none", cursor: "pointer", letterSpacing: "0.1em", textTransform: "uppercase", textShadow: TS }}>
               ↺ Reset
             </button>
