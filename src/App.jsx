@@ -17,7 +17,7 @@ const WHITE_25 = "rgba(255,255,255,0.25)";
 const WHITE_12 = "rgba(255,255,255,0.12)";
 const SHADOW = "0 8px 32px rgba(60,40,120,0.2)";
 const SHADOW_SM = "0 4px 16px rgba(60,40,120,0.15)";
-const TS = "0 1px 3px rgba(40,20,80,0.35)"; // text shadow for legibility
+const TS = "0 1px 3px rgba(40,20,80,0.35)";
 
 // ───────────────────────────────────────────────────────────────────
 // SYSTEM PROMPTS — ADVERTISING (full copywriting skill embedded)
@@ -425,7 +425,6 @@ function PackClaimCard({ claim, idx, category, onCopy, copied, score: qualitySco
         <div style={{ fontSize: 11, color: WHITE_45, fontStyle: "italic", marginBottom: 4, textShadow: TS }}>{claim.source_note}</div>
       )}
 
-      {/* Legal nervousness meter */}
       <div style={{ marginTop: 14, padding: "12px 14px", background: "rgba(0,0,0,0.18)", backdropFilter: "blur(8px)", borderRadius: 12, border: `1px solid ${GLASS_BORDER_SOFT}` }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
           <span style={{ fontSize: 10, color: WHITE_45, letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 500 }}>Legal Nervousness</span>
@@ -594,13 +593,13 @@ export default function App() {
 
   const copyAdAll = () => {
     if (!adResults) return;
-    const txt = adResults.claims.map((c, i) => `${String(i+1).padStart(2,"00")}. ${c.route_label}\n${c.core_claim}\n${c.supporting_line}\n${c.attribution}`).join("\n\n---\n\n");
+    const txt = adResults.claims.map((c, i) => `${String(i+1).padStart(2,"0")}. ${c.route_label}\n${c.core_claim}\n${c.supporting_line}\n${c.attribution}`).join("\n\n---\n\n");
     navigator.clipboard.writeText(txt); setCopied("ad-all"); setTimeout(() => setCopied(null), 2000);
   };
 
   const copyPackAll = () => {
     if (!packResults) return;
-    const txt = packResults.claims.map((c, i) => `${String(i+1).padStart(2,"00")}. ${c.route_label}\n${c.core_claim}\n${c.attribution}\n${c.source_note}`).join("\n\n---\n\n");
+    const txt = packResults.claims.map((c, i) => `${String(i+1).padStart(2,"0")}. ${c.route_label}\n${c.core_claim}\n${c.attribution}\n${c.source_note}`).join("\n\n---\n\n");
     navigator.clipboard.writeText(txt); setCopied("pk-all"); setTimeout(() => setCopied(null), 2000);
   };
 
@@ -714,12 +713,12 @@ export default function App() {
   const catLabel = categories.length === 1 ? categories[0] : `${categories.length} categories`;
 
   return (
-    <div style={{ minHeight: "100vh", background: BG, fontFamily: "'Roboto',sans-serif", color: WHITE, position: "relative", overflow: "hidden" }}>
+    <div style={{ minHeight: "100vh", background: BG, fontFamily: "'Roboto',sans-serif", color: WHITE, position: "relative" }}>
       <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700;900&family=Roboto+Mono:wght@400;500&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet" />
       <img src="/DOG.png" alt="" style={{
-        position: "absolute", bottom: 0, left: "50%", transform: "translateX(-50%)",
-        width: "100%", maxWidth: 1200, pointerEvents: "none", zIndex: 0,
-        opacity: 0.18, userSelect: "none",
+        position: "fixed", bottom: 0, left: 0,
+        width: "100vw", pointerEvents: "none", zIndex: 0,
+        opacity: 0.25, userSelect: "none",
       }} />
       <style>{`
         @keyframes pulse{0%,100%{opacity:.35}50%{opacity:.7}}
