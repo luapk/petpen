@@ -600,7 +600,7 @@ export default function App() {
 
   const copyPackAll = () => {
     if (!packResults) return;
-    const txt = packResults.claims.map((c, i) => `${String(i+1).padStart(2,"0")}. ${c.route_label}\n${c.core_claim}\n${c.attribution}\n${c.source_note}`).join("\n\n---\n\n");
+    const txt = packResults.claims.map((c, i) => `${String(i+1).padStart(2,"00")}. ${c.route_label}\n${c.core_claim}\n${c.attribution}\n${c.source_note}`).join("\n\n---\n\n");
     navigator.clipboard.writeText(txt); setCopied("pk-all"); setTimeout(() => setCopied(null), 2000);
   };
 
@@ -719,7 +719,7 @@ export default function App() {
       <img src={dogImg} alt="" style={{
         position: "fixed", bottom: 0, left: 0,
         width: "100vw", pointerEvents: "none", zIndex: 0,
-        opacity: 0.55, mixBlendMode: "screen", userSelect: "none",
+        opacity: 1, mixBlendMode: "screen", userSelect: "none",
       }} />
       <style>{`
         @keyframes pulse{0%,100%{opacity:.35}50%{opacity:.7}}
