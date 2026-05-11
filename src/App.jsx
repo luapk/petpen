@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import dogImg from "../DOG.png";
 
 // ───────────────────────────────────────────────────────────────────
 // DESIGN TOKENS
@@ -715,10 +716,10 @@ export default function App() {
   return (
     <div style={{ minHeight: "100vh", background: BG, fontFamily: "'Roboto',sans-serif", color: WHITE, position: "relative" }}>
       <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700;900&family=Roboto+Mono:wght@400;500&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet" />
-      <img src="/DOG.png" alt="" style={{
+      <img src={dogImg} alt="" style={{
         position: "fixed", bottom: 0, left: 0,
         width: "100vw", pointerEvents: "none", zIndex: 0,
-        opacity: 0.25, userSelect: "none",
+        opacity: 0.55, mixBlendMode: "screen", userSelect: "none",
       }} />
       <style>{`
         @keyframes pulse{0%,100%{opacity:.35}50%{opacity:.7}}
